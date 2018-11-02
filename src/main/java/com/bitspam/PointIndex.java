@@ -20,6 +20,7 @@ public class PointIndex implements Serializable {
 
 	public void setKey(int key) {
 		this.key.append(key);
+		this.key.append(".");
 	}
 
 	public String toString() {
