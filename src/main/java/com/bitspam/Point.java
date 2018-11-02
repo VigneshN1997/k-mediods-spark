@@ -3,17 +3,23 @@ package com.bitspam;
 import java.io.Serializable;
 
 public class Point implements Serializable {
-	private float[] attr = null;
+	private double[] attr = null;
+	private int dimension;
 
 	public Point(int dimension) {
-		this.attr = new float[dimension];
+		this.attr = new double[dimension];
+		this.dimension = dimension;
 	}
 
-	public float[] getAttr() {
+	public int getDimension() {
+		return dimension;
+	}
+	
+	public double[] getAttr() {
 		return attr;
 	}
 
-	public void setAttr(float[] ptrs) {
+	public void setAttr(double[] ptrs) {
 		this.attr = ptrs;
 	}
 
@@ -34,7 +40,7 @@ public class Point implements Serializable {
 		int count = 0;
 
 		for (int i = 0; i < this.attr.length; i++) {
-			float[] temp = other.getAttr();
+			double[] temp = other.getAttr();
 			if (this.attr[i] == temp[i]) {
 				count++;
 			}

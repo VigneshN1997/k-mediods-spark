@@ -1,5 +1,9 @@
 package com.bitspam;
 
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
@@ -19,12 +23,22 @@ public final class BITSPAM {
 	public static JavaRDD<Point> readFile(JavaSparkContext sc, String inputPath, int numOfCores) {
 		// read input file(s) and load to RDD
 		JavaRDD<String> lines = sc.textFile(inputPath, numOfCores); // numOfCores = minPartitions
-		JavaRDD<Point> dataSet = lines.map(new BITSPAM.ParsePoint()).persist(StorageLevel.MEMORY_AND_DISK_SER()); // why
-																													// is
-																													// persist
-																													// needed
-																													// here
+		JavaRDD<Point> dataSet = lines.map(new BITSPAM.ParsePoint());
 		return dataSet;
+	}
+	
+	public static JavaRDD<PointIndex> initializeRDD(JavaSparkContext sc, int numPoints) {
+		List<Integer> indicesList = IntStream.rangeClosed(0, numPoints -1).boxed().collect(Collectors.toList());
+		JavaRDD<Integer> tempRDD = sc.parallelize(indicesList);
+		JavaRDD<PointIndex> indicesRDD = sc.parallelize(indicesList).map(new BITSPAM.createPointIndex()).persist(StorageLevel.MEMORY_AND_DISK_SER());
+		return indicesRDD;
+	}
+
+	public static class createPointIndex implements Function<Integer, PointIndex> {
+
+		public PointIndex call(Integer index) {
+			return new PointIndex(index);
+		}
 	}
 
 	/**
@@ -36,7 +50,7 @@ public final class BITSPAM {
 			String[] toks = line.toString().split(eleDivider);
 			Point pt = new Point(toks.length);
 			for (int j = 0; j < toks.length; j++)
-				pt.getAttr()[j] = (Float.parseFloat(toks[j]));
+				pt.getAttr()[j] = (Double.parseDouble(toks[j]));
 			return pt;
 		}
 	}
