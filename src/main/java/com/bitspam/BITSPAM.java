@@ -4,13 +4,17 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.storage.StorageLevel;
 
+import scala.Tuple2;
+
 public final class BITSPAM {
-	public static String eleDivider = ",";
+	public static String eleDivider = "\t";
 
 	/**
 	 * Read and parsing input files
@@ -27,17 +31,17 @@ public final class BITSPAM {
 		return dataSet;
 	}
 	
-	public static JavaRDD<PointIndex> initializeRDD(JavaSparkContext sc, int numPoints) {
+	public static JavaPairRDD<String, Integer> initializeRDD(JavaSparkContext sc, int numPoints) {
 		List<Integer> indicesList = IntStream.rangeClosed(0, numPoints -1).boxed().collect(Collectors.toList());
-		JavaRDD<Integer> tempRDD = sc.parallelize(indicesList);
-		JavaRDD<PointIndex> indicesRDD = sc.parallelize(indicesList).map(new BITSPAM.createPointIndex()).persist(StorageLevel.MEMORY_AND_DISK_SER());
+		JavaPairRDD<String,Integer> indicesRDD = sc.parallelize(indicesList).mapToPair(new BITSPAM.createPointIndex()).persist(StorageLevel.MEMORY_AND_DISK_SER());
 		return indicesRDD;
 	}
-
-	public static class createPointIndex implements Function<Integer, PointIndex> {
-
-		public PointIndex call(Integer index) {
-			return new PointIndex(index);
+	
+	public static class createPointIndex implements PairFunction<Integer, String, Integer> {
+		
+		
+		public Tuple2<String, Integer> call(Integer index) {
+			return new Tuple2<String, Integer>("", index);
 		}
 	}
 

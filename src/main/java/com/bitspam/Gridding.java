@@ -2,6 +2,8 @@ package com.bitspam;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import org.apache.spark.api.java.function.Function;
 
 
@@ -26,17 +28,18 @@ public class Gridding {
         Gridding.dataSetList = dataSetList;
     }
 
-    public static void findOptCellSize(int tau, int numPoints, int dimension, double[] minGridSize, double[] maxGridSize) {
+    public static void findOptCellSize(int tau, int numPoints) {
         double volume = 1;
         double cellVolume;
         int i;
         for(i=0; i < dimension;i++) {
-            volume *= (maxGridSize[i] - minGridSize[i]);
+            volume *= (maxGridPoint[i] - minGridPoint[i]);
         }
         cellVolume = volume * tau / numPoints;
         initialCellSize = Math.pow(cellVolume,1.0/dimension);
     }
 
+    // This function is a recursive function which is used for filling the hash map data structure with cell numbers and cell bounds 
     public static void getCellKeys(int currDimNum, double[] minPointAcc, double[] maxPointAcc, int[] cellNumArr) {
         if(currDimNum == dimension) {
             String cellNumStr = convertCellNumArrToString(cellNumArr);
@@ -66,15 +69,15 @@ public class Gridding {
         }
     }
 
-    public static class assignKeyToPointUG implements Function<PointIndex, PointIndex> { // UG means uniform gridding
+    public static class assignKeyToPointUG implements Function<Tuple2<String, Integer>, Tuple2<String, Integer>> { // UG means uniform gridding
 
-		public PointIndex call(PointIndex pi) {
+		public Tuple2<String, Integer> call(Tuple2<String, Integer> pi) {
             int[] cellNumArr = new int[dimension];
             for(int i = 0; i < dimension; i++) {
-                cellNumArr[i] = (int)Math.floor((dataSetList.get(pi.getIndex()).getAttr()[i] - minGridPoint[i]) / initialCellSize);
+                cellNumArr[i] = (int)Math.floor((dataSetList.get(pi._2).getAttr()[i] - minGridPoint[i]) / initialCellSize);
             }
-            pi.setKey(globalPositioningIndex.get(convertCellNumArrToString(cellNumArr)));
-			return pi;
+            // globalPositioningIndex.get(convertCellNumArrToString(cellNumArr))
+			return new Tuple2<String,Integer>(pi._1 + globalPositioningIndex.get(convertCellNumArrToString(cellNumArr)), pi._2);
 		}
 	}
 
@@ -84,9 +87,11 @@ public class Gridding {
             str.append(cellNumArr[i]);
             str.append(",");
         }
-        return str.toString();
+        String ret = new String(str.toString());
+        return ret;
     }
 
+    // this function applies uniform gridding to points and assigns a cell number to each point
     public static void applyUniformGridding() {
         int currDimNum = 0;
         double[] minPointAcc = new double[dimension];
@@ -94,5 +99,12 @@ public class Gridding {
         int[] cellNumArr = new int[dimension];
         
     	getCellKeys(currDimNum, minPointAcc, maxPointAcc, cellNumArr);
+    }
+
+    public static void printHashMaps() {
+        System.out.println("Global Positioning index:");
+        for (Map.Entry<String, Integer> entry : globalPositioningIndex.entrySet()) {
+            System.out.println(entry.getKey() + ":::::" + entry.getValue());
+        }
     }
 }
