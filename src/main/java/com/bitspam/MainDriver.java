@@ -4,9 +4,10 @@ package com.bitspam;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.apache.spark.HashPartitioner;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -37,16 +38,9 @@ public class MainDriver {
 
 		JavaRDD<Point> dataSetRDD = BITSPAM.readFile(sc, inputPath, numOfCores);
 		List<Point> dataSetList = dataSetRDD.collect();
-		// for (i = 0; i < dataSetList.size(); i++) {
-		// 	System.out.println(dataSetList.get(i));
-		// }
 
 		int dimension = dataSetList.get(0).getDimension();
 		int numPoints = dataSetList.size();
-
-		
-		
-		JavaPairRDD<String, Integer> indicesRDD = BITSPAM.initializeRDD(sc, numPoints);
 		double[] minGridPoint = new double[dimension];
 		double[] maxGridPoint = new double[dimension];
 
@@ -54,15 +48,17 @@ public class MainDriver {
 			minGridPoint[i] = dataSetRDD.min(new DimensionComparator(i)).getAttr()[i];
 			maxGridPoint[i] = dataSetRDD.max(new DimensionComparator(i)).getAttr()[i];
 		}
-		Gridding.initializeGridding(dimension, minGridPoint, maxGridPoint, dataSetList);
-		
+		Gridding.initializeGridding(dimension, minGridPoint, maxGridPoint, dataSetList, tau);
 		Gridding.findOptCellSize(tau, numPoints);
 		Gridding.applyUniformGridding();
-		JavaRDD<Tuple2<String, Integer>> uniformRDD = indicesRDD.map(new Gridding.assignKeyToPointUG());
-		
+
+		JavaPairRDD<String, Integer> uniformRDD = BITSPAM.initializeRDD(sc, numPoints).mapToPair(new Gridding.assignKeyToPointUG());
+		uniformRDD.partitionBy(new HashPartitioner(numOfCores));
+		Map<String, Long> cellCount = uniformRDD.countByKey();
+		JavaPairRDD<String, Integer> adaptiveRDD = Gridding.applyAdaptiveGridding(uniformRDD, cellCount);
 		// Gridding.printHashMaps();
 		
-		List<Tuple2<String, Integer>> uniformList = uniformRDD.collect();
+		List<Tuple2<String, Integer>> uniformList = adaptiveRDD.collect();
 		for (i = 0; i < numPoints; i++) {
 			System.out.println(uniformList.get(i)._1 + "::::::" + uniformList.get(i)._2);
 		}

@@ -1,11 +1,13 @@
 package com.bitspam;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.spark.api.java.function.Function;
-
+import org.apache.spark.HashPartitioner;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.function.PairFunction;
 
 import scala.Tuple2;
 
@@ -20,12 +22,14 @@ public class Gridding {
     private static double[] maxGridPoint = null;
     private static int dimension;
     private static List<Point> dataSetList;
+    private static int tau;
 
-    public static void initializeGridding(int dimension, double[] minGridPoint, double[] maxGridPoint, List<Point> dataSetList) {
+    public static void initializeGridding(int dimension, double[] minGridPoint, double[] maxGridPoint, List<Point> dataSetList, int tau) {
         Gridding.dimension = dimension;
         Gridding.minGridPoint = minGridPoint;
         Gridding.maxGridPoint = maxGridPoint;
         Gridding.dataSetList = dataSetList;
+        Gridding.tau = tau;
     }
 
     public static void findOptCellSize(int tau, int numPoints) {
@@ -69,15 +73,14 @@ public class Gridding {
         }
     }
 
-    public static class assignKeyToPointUG implements Function<Tuple2<String, Integer>, Tuple2<String, Integer>> { // UG means uniform gridding
+    public static class assignKeyToPointUG implements PairFunction<Tuple2<String, Integer>, String, Integer> { // UG means uniform gridding
 
 		public Tuple2<String, Integer> call(Tuple2<String, Integer> pi) {
             int[] cellNumArr = new int[dimension];
             for(int i = 0; i < dimension; i++) {
                 cellNumArr[i] = (int)Math.floor((dataSetList.get(pi._2).getAttr()[i] - minGridPoint[i]) / initialCellSize);
             }
-            // globalPositioningIndex.get(convertCellNumArrToString(cellNumArr))
-			return new Tuple2<String,Integer>(pi._1 + globalPositioningIndex.get(convertCellNumArrToString(cellNumArr)), pi._2);
+            return new Tuple2<String,Integer>(globalPositioningIndex.get(convertCellNumArrToString(cellNumArr)).toString(), pi._2);
 		}
 	}
 
@@ -107,4 +110,115 @@ public class Gridding {
             System.out.println(entry.getKey() + ":::::" + entry.getValue());
         }
     }
+
+    public static JavaPairRDD<String, Integer> applyAdaptiveGridding(JavaPairRDD<String, Integer> adaptiveGridRDD, Map<String, Long> cellCount) {
+        double[] minPointAcc = new double[dimension];
+        double[] maxPointAcc = new double[dimension];
+        String cellKey;
+        Tuple2<Double[], Double[]> pair;
+        Double[] minGridDim, maxGridDim;
+        int[] cellNumArr = new int[dimension];
+        List<String> keysToBeRemoved = new ArrayList<String>();
+
+        int itr = 0;
+        while(true) {
+            boolean adaptiveGriddingDone = true;
+            for(Map.Entry<String, Long> entry: cellCount.entrySet()) {
+                // System.out.println(entry.getKey() + ":::" + entry.getValue());
+                if(entry.getValue() > tau) {
+                    keysToBeRemoved.add(entry.getKey());
+                    adaptiveGriddingDone = false;
+                    cellKey = entry.getKey();
+                    pair = keyToCell.get(cellKey);
+                    minGridDim = pair._1;
+                    maxGridDim = pair._2;
+                    getCellKeysAdaptive(0, minPointAcc, maxPointAcc, cellNumArr, minGridDim, maxGridDim, cellKey);
+                }
+            }
+            System.out.println("hey hello1");
+            if(adaptiveGriddingDone) {
+                break;
+            }
+            System.out.println("hey hello2");
+            List<Tuple2<String, Integer>> ls1 = adaptiveGridRDD.collect();
+            System.out.println("ls1 size:" + ls1.size());
+            for (int l = 0; l < ls1.size(); l++) {
+                System.out.println(ls1.get(l)._1 + "  " + ls1.get(l)._2);
+            }
+            adaptiveGridRDD = adaptiveGridRDD.mapToPair(new Gridding.adaptiveGridding(cellCount));
+            List<Tuple2<String, Integer>> ls = adaptiveGridRDD.collect();
+            for (int l = 0; l < ls.size(); l++) {
+                System.out.println(ls.get(l)._1 + "  " + ls.get(l)._2);
+            }
+            for (int l = 0; l < keysToBeRemoved.size(); l++) {
+                System.out.println(keysToBeRemoved.get(l));
+            }
+            // System.out.print("finished iteration:" + itr);
+            cellCount = adaptiveGridRDD.countByKey();
+            itr++;
+            for(String key: keysToBeRemoved) {
+                keyToCell.remove(key);
+            }
+            keysToBeRemoved.clear();
+        }
+        return adaptiveGridRDD;
+    }
+    
+    public static void getCellKeysAdaptive(int currDimNum, double[] minPointAcc, double[] maxPointAcc, int[] cellNumArr, Double[] minGridDim, Double[] maxGridDim, String existingKey) {
+        if(currDimNum == dimension) {
+            String cellNumStr = convertCellNumArrToString(cellNumArr);
+            Double[] minPointArr = new Double[dimension];
+            Double[] maxPointArr = new Double[dimension];
+            for(int i = 0; i < dimension; i++) {
+                minPointArr[i] = minPointAcc[i];
+                maxPointArr[i] = maxPointAcc[i];
+            }
+            Integer newKeyToAppend = globalPositioningIndex.get(cellNumStr);
+            keyToCell.put(existingKey + "." + newKeyToAppend.toString(), new Tuple2<Double[],Double[]>(minPointArr, maxPointArr));
+            return;
+        }
+        int numPartitions = 2;
+        double length = (maxGridDim[currDimNum] - minGridDim[currDimNum]) / 2;
+        double partitionStart = minGridDim[currDimNum];
+        double partitionEnd = partitionStart + length;
+        for(int i = 0; i < numPartitions; i++) {
+            minPointAcc[currDimNum] = partitionStart;
+            maxPointAcc[currDimNum] = partitionEnd;
+            cellNumArr[currDimNum] = i;
+            if(i == numPartitions - 1) {
+                maxPointAcc[currDimNum] = maxGridDim[currDimNum];
+            }
+            getCellKeysAdaptive(currDimNum+1, minPointAcc, maxPointAcc, cellNumArr, minGridDim, maxGridDim, existingKey);
+            partitionStart = partitionEnd;
+            partitionEnd = partitionStart + length;
+        }
+    }
+
+    public static class adaptiveGridding implements PairFunction<Tuple2<String, Integer>, String, Integer> { // UG means uniform gridding
+        private Map<String, Long> cellCount;
+
+        public adaptiveGridding(Map<String, Long> cellCount) {
+            this.cellCount = cellCount;
+        }
+
+		public Tuple2<String, Integer> call(Tuple2<String, Integer> pi) {
+            // System.out.println("size:" + cellCount.size());
+            if(cellCount.get(pi._1) <= tau) {
+                return new Tuple2<String, Integer>(pi._1, pi._2);
+            }
+            else {
+            	System.out.println("key accessed :" + pi._1);
+                Tuple2<Double[], Double[]> pair = keyToCell.get(pi._1);
+                // System.out.println("in adaptive" + pair);
+                Double[] minGridDim = pair._1;
+                Double[] maxGridDim = pair._2;
+                double[] point = dataSetList.get(pi._2).getAttr();
+                int[] cellNumArr = new int[dimension];
+                for(int i = 0; i < dimension; i++) {
+                    cellNumArr[i] = point[i] >= (maxGridDim[i] - minGridDim[i])/2 ? 1:0;
+                }
+                return new Tuple2<String,Integer>(pi._1 + "." + globalPositioningIndex.get(convertCellNumArrToString(cellNumArr)), pi._2);
+            }
+		}
+	} 
 }
