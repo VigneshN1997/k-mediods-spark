@@ -7,6 +7,7 @@ import java.util.Map;
 
 import org.apache.spark.HashPartitioner;
 import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.PairFunction;
 
 import scala.Tuple2;
@@ -111,7 +112,7 @@ public class Gridding {
         }
     }
 
-    public static JavaPairRDD<String, Integer> applyAdaptiveGridding(JavaPairRDD<String, Integer> adaptiveGridRDD, Map<String, Long> cellCount) {
+    public static JavaPairRDD<String, Integer> applyAdaptiveGridding(JavaSparkContext sc, List<Tuple2<String, Integer>> adaptiveRDDList, Map<String, Long> cellCount) {
         double[] minPointAcc = new double[dimension];
         double[] maxPointAcc = new double[dimension];
         String cellKey;
@@ -119,40 +120,38 @@ public class Gridding {
         Double[] minGridDim, maxGridDim;
         int[] cellNumArr = new int[dimension];
         List<String> keysToBeRemoved = new ArrayList<String>();
-
+        
         int itr = 0;
         while(true) {
             boolean adaptiveGriddingDone = true;
+            System.out.println("cellcount in itr:" + itr);
             for(Map.Entry<String, Long> entry: cellCount.entrySet()) {
-                // System.out.println(entry.getKey() + ":::" + entry.getValue());
+                System.out.print(entry.getKey() + "    " + entry.getValue() + "  " + (entry.getValue() <= tau) + "  ");
+                cellKey = entry.getKey();
+                pair = keyToCell.get(cellKey);
+                minGridDim = pair._1;
+                maxGridDim = pair._2;
+                for(int j = 0; j < dimension; j++) {
+                    System.out.print(minGridDim[j] + ",");
+                }
+                System.out.print("  ");
+                for(int j = 0; j < dimension; j++) {
+                    System.out.println(maxGridDim[j] + ",");
+                }
+                System.out.println();
                 if(entry.getValue() > tau) {
                     keysToBeRemoved.add(entry.getKey());
                     adaptiveGriddingDone = false;
-                    cellKey = entry.getKey();
-                    pair = keyToCell.get(cellKey);
-                    minGridDim = pair._1;
-                    maxGridDim = pair._2;
+                    
+                    
                     getCellKeysAdaptive(0, minPointAcc, maxPointAcc, cellNumArr, minGridDim, maxGridDim, cellKey);
                 }
             }
-            System.out.println("hey hello1");
             if(adaptiveGriddingDone) {
-                break;
+                return JavaPairRDD.fromJavaRDD(sc.parallelize(adaptiveRDDList));
             }
-            System.out.println("hey hello2");
-            List<Tuple2<String, Integer>> ls1 = adaptiveGridRDD.collect();
-            System.out.println("ls1 size:" + ls1.size());
-            for (int l = 0; l < ls1.size(); l++) {
-                System.out.println(ls1.get(l)._1 + "  " + ls1.get(l)._2);
-            }
-            adaptiveGridRDD = adaptiveGridRDD.mapToPair(new Gridding.adaptiveGridding(cellCount));
-            List<Tuple2<String, Integer>> ls = adaptiveGridRDD.collect();
-            for (int l = 0; l < ls.size(); l++) {
-                System.out.println(ls.get(l)._1 + "  " + ls.get(l)._2);
-            }
-            for (int l = 0; l < keysToBeRemoved.size(); l++) {
-                System.out.println(keysToBeRemoved.get(l));
-            }
+            JavaPairRDD<String, Integer> adaptiveGridRDD = JavaPairRDD.fromJavaRDD(sc.parallelize(adaptiveRDDList)).mapToPair(new Gridding.adaptiveGridding(cellCount));
+            adaptiveRDDList = adaptiveGridRDD.collect();
             // System.out.print("finished iteration:" + itr);
             cellCount = adaptiveGridRDD.countByKey();
             itr++;
@@ -161,7 +160,6 @@ public class Gridding {
             }
             keysToBeRemoved.clear();
         }
-        return adaptiveGridRDD;
     }
     
     public static void getCellKeysAdaptive(int currDimNum, double[] minPointAcc, double[] maxPointAcc, int[] cellNumArr, Double[] minGridDim, Double[] maxGridDim, String existingKey) {
@@ -207,7 +205,7 @@ public class Gridding {
                 return new Tuple2<String, Integer>(pi._1, pi._2);
             }
             else {
-            	System.out.println("key accessed :" + pi._1);
+            	// System.out.println("key accessed :" + pi._1);
                 Tuple2<Double[], Double[]> pair = keyToCell.get(pi._1);
                 // System.out.println("in adaptive" + pair);
                 Double[] minGridDim = pair._1;

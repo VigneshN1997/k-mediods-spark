@@ -55,12 +55,12 @@ public class MainDriver {
 		JavaPairRDD<String, Integer> uniformRDD = BITSPAM.initializeRDD(sc, numPoints).mapToPair(new Gridding.assignKeyToPointUG());
 		uniformRDD.partitionBy(new HashPartitioner(numOfCores));
 		Map<String, Long> cellCount = uniformRDD.countByKey();
-		JavaPairRDD<String, Integer> adaptiveRDD = Gridding.applyAdaptiveGridding(uniformRDD, cellCount);
+		JavaPairRDD<String, Integer> adaptiveRDD = Gridding.applyAdaptiveGridding(sc, uniformRDD.collect(), cellCount);
 		// Gridding.printHashMaps();
 		
 		List<Tuple2<String, Integer>> uniformList = adaptiveRDD.collect();
 		for (i = 0; i < numPoints; i++) {
-			System.out.println(uniformList.get(i)._1 + "::::::" + uniformList.get(i)._2);
+			System.out.println(uniformList.get(i)._1 + "  " + uniformList.get(i)._2);
 		}
 	}
 }
