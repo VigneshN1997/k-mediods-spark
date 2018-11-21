@@ -51,12 +51,22 @@ public class MainDriver {
 		Gridding.initializeGridding(dimension, minGridPoint, maxGridPoint, dataSetList, tau);
 		Gridding.findOptCellSize(tau, numPoints);
 		Gridding.applyUniformGridding();
+		PAM.initializePAM(dataSetList, dimension);
 
 		JavaPairRDD<String, Integer> uniformRDD = BITSPAM.initializeRDD(sc, numPoints).mapToPair(new Gridding.assignKeyToPointUG());
+		int count = Gridding.getNumberOfKeys();
+		double numPointsPerCell = (double)numPoints / (double)count;
+		System.out.println("count: " + count + "  numPointsPerCell:" + numPointsPerCell);
 		uniformRDD.partitionBy(new HashPartitioner(numOfCores));
 		Map<String, Long> cellCount = uniformRDD.countByKey();
 		JavaPairRDD<String, Integer> adaptiveRDD = Gridding.applyAdaptiveGridding(sc, uniformRDD.collect(), cellCount);
 		// Gridding.printHashMaps();
+		double avgNumPointsPerCell = (double)Gridding.getNumberOfKeys() / numPoints;
+		JavaRDD<Integer> samplePointsRDD = sc.parallelize(adaptiveRDD.mapToPair(new Gridding.mapToList())
+											.reduceByKey(new Gridding.reduceLists())
+											.mapToPair(new PAM.OriginalPAM(avgNumPointsPerCell))
+											.values().reduce(new Gridding.reduceLists()));
+
 		
 		List<Tuple2<String, Integer>> uniformList = adaptiveRDD.collect();
 		for (i = 0; i < numPoints; i++) {

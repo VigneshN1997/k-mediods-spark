@@ -8,6 +8,7 @@ import java.util.Map;
 import org.apache.spark.HashPartitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
 
 import scala.Tuple2;
@@ -217,6 +218,28 @@ public class Gridding {
                 }
                 return new Tuple2<String,Integer>(pi._1 + "." + globalPositioningIndex.get(convertCellNumArrToString(cellNumArr)), pi._2);
             }
+		}
+	} 
+    
+    public static int getNumberOfKeys() {
+    	return keyToCell.keySet().size();
+    }
+
+    public static class mapToList implements PairFunction<Tuple2<String, Integer>, String, List<Integer>> { // UG means uniform gridding
+
+		public Tuple2<String, List<Integer>> call(Tuple2<String, Integer> pi) {
+			List<Integer> ls = new ArrayList<Integer>();
+			ls.add(pi._2);
+			return new Tuple2<String,List<Integer>>(pi._1, ls);
+		}
+	} 
+	
+	public static class reduceLists implements Function2<List<Integer>, List<Integer>, List<Integer>> { // UG means uniform gridding
+
+		public List<Integer> call(List<Integer> l1, List<Integer> l2) {
+			List<Integer> ls = new ArrayList<Integer>(l1);
+			ls.addAll(l2);
+			return ls;
 		}
 	} 
 }

@@ -28,21 +28,25 @@ public class Test {
 		JavaPairRDD<String, Integer> rdd = JavaPairRDD.fromJavaRDD(sc.parallelize(ls));
 		JavaPairRDD<String, List<Integer>> rdd1 = rdd.mapToPair(new Test.abc());
 		JavaPairRDD<String, List<Integer>> rdd2 = rdd1.reduceByKey(new Test.def());
-		List<Tuple2<String, List<Integer>>> lis = rdd2.collect();
-		for(Tuple2<String, List<Integer>> elem : lis) {
-			System.out.print(elem._1 + "  ");
-			for(Integer i: elem._2) {
-				System.out.print(i + ",");
-			}
-			System.out.println();
-		}
-		List<Tuple2<String, List<Integer>>> lis2 = rdd2.collect();
-		for(Tuple2<String, List<Integer>> elem : lis2) {
-			System.out.print(elem._1 + "  ");
-			for(Integer i: elem._2) {
-				System.out.print(i + ",");
-			}
-			System.out.println();
+		List<Integer>  x = rdd2.values().reduce(new Test.ghi());
+		// List<Tuple2<String, List<Integer>>> lis = rdd2.collect();
+		// for(Tuple2<String, List<Integer>> elem : lis) {
+		// 	System.out.print(elem._1 + "  ");
+		// 	for(Integer i: elem._2) {
+		// 		System.out.print(i + ",");
+		// 	}
+		// 	System.out.println();
+		// }
+		// List<Tuple2<String, List<Integer>>> lis2 = rdd2.collect();
+		// for(Tuple2<String, List<Integer>> elem : lis2) {
+		// 	System.out.print(elem._1 + "  ");
+		// 	for(Integer i: elem._2) {
+		// 		System.out.print(i + ",");
+		// 	}
+		// 	System.out.println();
+		// }
+		for(Integer i : x) {
+			System.out.println(i);
 		}
 	}
 
@@ -56,6 +60,15 @@ public class Test {
 	} 
 	
 	public static class def implements Function2<List<Integer>, List<Integer>, List<Integer>> { // UG means uniform gridding
+
+		public List<Integer> call(List<Integer> l1, List<Integer> l2) {
+			List<Integer> ls = new ArrayList<Integer>(l1);
+			ls.addAll(l2);
+			return ls;
+		}
+	} 
+
+	public static class ghi implements Function2<List<Integer>, List<Integer>, List<Integer>> { // UG means uniform gridding
 
 		public List<Integer> call(List<Integer> l1, List<Integer> l2) {
 			List<Integer> ls = new ArrayList<Integer>(l1);
