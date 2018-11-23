@@ -62,10 +62,10 @@ public class MainDriver {
 		JavaPairRDD<String, Integer> adaptiveRDD = Gridding.applyAdaptiveGridding(sc, uniformRDD.collect(), cellCount);
 		// Gridding.printHashMaps();
 		double avgNumPointsPerCell = (double)Gridding.getNumberOfKeys() / numPoints;
-		JavaRDD<Integer> samplePointsRDD = sc.parallelize(adaptiveRDD.mapToPair(new Gridding.mapToList())
+		List<Integer> samplePoints = adaptiveRDD.mapToPair(new Gridding.mapToList())
 											.reduceByKey(new Gridding.reduceLists())
 											.mapToPair(new PAM.OriginalPAM(avgNumPointsPerCell))
-											.values().reduce(new Gridding.reduceLists()));
+											.values().reduce(new Gridding.reduceLists());
 
 		
 		List<Tuple2<String, Integer>> uniformList = adaptiveRDD.collect();
