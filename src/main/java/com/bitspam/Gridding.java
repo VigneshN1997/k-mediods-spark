@@ -66,9 +66,6 @@ public class Gridding {
             minPointAcc[currDimNum] = partitionStart;
             maxPointAcc[currDimNum] = partitionEnd;
             cellNumArr[currDimNum] = i;
-            if(i == numPartitions - 1) {
-                maxPointAcc[currDimNum] = maxGridPoint[currDimNum];
-            }
             getCellKeys(currDimNum+1, minPointAcc, maxPointAcc, cellNumArr);
             partitionStart = partitionEnd;
             partitionEnd = partitionStart + initialCellSize;
@@ -177,16 +174,13 @@ public class Gridding {
             return;
         }
         int numPartitions = 2;
-        double length = (maxGridDim[currDimNum] - minGridDim[currDimNum]) / 2;
+        double length = (maxGridDim[0] - minGridDim[0]) / 2;
         double partitionStart = minGridDim[currDimNum];
         double partitionEnd = partitionStart + length;
         for(int i = 0; i < numPartitions; i++) {
             minPointAcc[currDimNum] = partitionStart;
             maxPointAcc[currDimNum] = partitionEnd;
             cellNumArr[currDimNum] = i;
-            if(i == numPartitions - 1) {
-                maxPointAcc[currDimNum] = maxGridDim[currDimNum];
-            }
             getCellKeysAdaptive(currDimNum+1, minPointAcc, maxPointAcc, cellNumArr, minGridDim, maxGridDim, existingKey);
             partitionStart = partitionEnd;
             partitionEnd = partitionStart + length;
@@ -214,7 +208,7 @@ public class Gridding {
                 double[] point = dataSetList.get(pi._2).getAttr();
                 int[] cellNumArr = new int[dimension];
                 for(int i = 0; i < dimension; i++) {
-                    cellNumArr[i] = point[i] >= (maxGridDim[i] - minGridDim[i])/2 ? 1:0;
+                    cellNumArr[i] = point[i] >= (maxGridDim[i] + minGridDim[i])/2 ? 1:0; // check
                 }
                 return new Tuple2<String,Integer>(pi._1 + "." + globalPositioningIndex.get(convertCellNumArrToString(cellNumArr)), pi._2);
             }

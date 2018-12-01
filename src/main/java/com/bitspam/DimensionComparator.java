@@ -10,7 +10,6 @@ public class DimensionComparator implements Comparator<Point>, Serializable {
 	public DimensionComparator(int iDim) {
 		this.iDim = iDim;
 	}
-	@Override
 	public int compare(Point o1, Point o2) {
 		if(o1.getAttr()[iDim] < o2.getAttr()[iDim]) {
 			return -1;

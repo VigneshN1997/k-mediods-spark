@@ -16,7 +16,7 @@ public class Test {
 	public static void main(String[] args) {
 		SparkConf sparkConf = new SparkConf().setAppName("k-mediods-BITS");
 		JavaSparkContext sc = new JavaSparkContext(sparkConf);
-		List<Tuple2<String, Integer>> ls = new ArrayList<>();
+		List<Tuple2<String, Integer>> ls = new ArrayList<Tuple2<String, Integer>>();
 		ls.add(new Tuple2<String, Integer>("a.b.c", 0));
 		ls.add(new Tuple2<String, Integer>("b.d.e", 2));
 		ls.add(new Tuple2<String, Integer>("b.d.e", 5));
