@@ -21,11 +21,11 @@ public class MainDriver {
 		// read arguments
 		int i;
 		String inputPath = args[0];
-		// int numOfClusters = Integer.parseInt(args[1]);
 		// int numOfSampledObjects = Integer.parseInt(args[2]);
 		// int numOfSamples = Integer.parseInt(args[3]);
 		int numOfCores = Integer.parseInt(args[1]);
 		int tau = Integer.parseInt(args[2]);
+		int numOfClusters = Integer.parseInt(args[3]);
 		// int numOfIteration = Integer.parseInt(args[5]);
 
 		// setup Spark configuration
@@ -67,7 +67,9 @@ public class MainDriver {
 											.mapToPair(new PAM.OriginalPAM(avgNumPointsPerCell))
 											.values().reduce(new Gridding.reduceLists());
 
-		
+		ParallelPAM.initializeParallelPAM(samplePoints, dataSetList, dimension, numOfClusters);
+		List<Integer> medoidIndices = ParallelPAM.applyParallelPAM(sc);
+
 		List<Tuple2<String, Integer>> uniformList = adaptiveRDD.collect();
 		for (i = 0; i < numPoints; i++) {
 			System.out.println(uniformList.get(i)._1 + "  " + uniformList.get(i)._2);
