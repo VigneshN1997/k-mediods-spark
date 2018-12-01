@@ -38,17 +38,17 @@ public class PAM {
             List<Integer> newMedoidsIndices = null;
             do {
 				iterations++;
-				for(int i = 0; i < numPoints; i++) {
-					if(!medoidIndices.contains(i)) {
-						double minDistance = Double.MAX_VALUE;
-						for(int j = 0; j < k; j++) {
-							double distance = calculateDistance(i, medoidIndices.get(j), preCalculatedResult, indices);
-							if(distance < minDistance) {
-								minDistance = distance;
-							}
-						}
-					}
-				}
+				// for(int i = 0; i < numPoints; i++) {
+				// 	if(!medoidIndices.contains(i)) {
+				// 		double minDistance = Double.MAX_VALUE;
+				// 		for(int j = 0; j < k; j++) {
+				// 			double distance = calculateDistance(i, medoidIndices.get(j), preCalculatedResult, indices);
+				// 			if(distance < minDistance) {
+				// 				minDistance = distance;
+				// 			}
+				// 		}
+				// 	}
+				// }
 
 				if (iterations == 1) {
 					List<Integer> oldMedoidIndices = new ArrayList<Integer>();
@@ -104,7 +104,7 @@ public class PAM {
 				int candidateMedoidIndex = -1;
 
 				for (int j = 0; j < indices.size(); ++j) {
-					oldMedoidsIndex.set(i, j);
+					oldMedoidsIndex.set(i, j); // TODO: check first if j is not in medoid list
 					double tempTotalCost = getTotalCost(oldMedoidsIndex, preCalcResult, indices);
 					if (tempTotalCost < newTotalCost) {
 						newTotalCost = tempTotalCost;

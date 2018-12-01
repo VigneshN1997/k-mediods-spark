@@ -122,21 +122,21 @@ public class Gridding {
         int itr = 0;
         while(true) {
             boolean adaptiveGriddingDone = true;
-            System.out.println("cellcount in itr:" + itr);
+            // System.out.println("cellcount in itr:" + itr);
             for(Map.Entry<String, Long> entry: cellCount.entrySet()) {
-                System.out.print(entry.getKey() + "    " + entry.getValue() + "  " + (entry.getValue() <= tau) + "  ");
+                // System.out.print(entry.getKey() + "    " + entry.getValue() + "  " + (entry.getValue() <= tau) + "  ");
                 cellKey = entry.getKey();
                 pair = keyToCell.get(cellKey);
                 minGridDim = pair._1;
                 maxGridDim = pair._2;
-                for(int j = 0; j < dimension; j++) {
-                    System.out.print(minGridDim[j] + ",");
-                }
-                System.out.print("  ");
-                for(int j = 0; j < dimension; j++) {
-                    System.out.println(maxGridDim[j] + ",");
-                }
-                System.out.println();
+                // for(int j = 0; j < dimension; j++) {
+                //     System.out.print(minGridDim[j] + ",");
+                // }
+                // System.out.print("  ");
+                // for(int j = 0; j < dimension; j++) {
+                //     System.out.println(maxGridDim[j] + ",");
+                // }
+                // System.out.println();
                 if(entry.getValue() > tau) {
                     keysToBeRemoved.add(entry.getKey());
                     adaptiveGriddingDone = false;

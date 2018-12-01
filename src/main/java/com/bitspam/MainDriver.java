@@ -68,11 +68,37 @@ public class MainDriver {
 											.values().reduce(new Gridding.reduceLists());
 
 		ParallelPAM.initializeParallelPAM(samplePoints, dataSetList, dimension, numOfClusters);
+		ParallelPAM.calculateDistancesBetweenPoints(sc);
 		List<Integer> medoidIndices = ParallelPAM.applyParallelPAM(sc);
+		
+		double totalCost = 0;
+		for (i = 0; i < numPoints; ++i) {
+			double cost = Double.MAX_VALUE;
+			double[] point1 = dataSetList.get(i).getAttr();
+            for (int j = 0; j < numOfClusters; ++j) {
+				double tempCost = 0;
+				double[] point2 = dataSetList.get(medoidIndices.get(j)).getAttr();
+				for(int ind = 0; ind < dimension; ind++) {
+					tempCost += (point1[ind] - point2[ind]) * (point1[ind] - point2[ind]);
+				}
+				tempCost = (double)Math.sqrt(tempCost);
+                if (tempCost < cost) {
+                    cost = tempCost;
+                }
+            }
+            totalCost += cost;
+        }
 
-		List<Tuple2<String, Integer>> uniformList = adaptiveRDD.collect();
-		for (i = 0; i < numPoints; i++) {
-			System.out.println(uniformList.get(i)._1 + "  " + uniformList.get(i)._2);
+		System.out.println("sample size: " + samplePoints.size());
+		System.out.print("final medoids:");
+		for(i = 0; i < numOfClusters; i++) {
+			System.out.print(medoidIndices.get(i) + ",");
 		}
+		System.out.println();
+		System.out.println("total cost:" + totalCost);
+		// List<Tuple2<String, Integer>> uniformList = adaptiveRDD.collect();
+		// for (i = 0; i < numPoints; i++) {
+		// 	System.out.println(uniformList.get(i)._1 + "  " + uniformList.get(i)._2);
+		// }
 	}
 }

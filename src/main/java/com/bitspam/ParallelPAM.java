@@ -1,6 +1,7 @@
 package com.bitspam;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -37,14 +38,15 @@ public class ParallelPAM {
 
     public static List<Integer> applyParallelPAM(JavaSparkContext sc) {
         List<Integer> indicesList = IntStream.rangeClosed(0, numPoints -1).boxed().collect(Collectors.toList());
+        Collections.shuffle(indicesList);
         List<Integer> medoidIndices = new ArrayList<Integer>();
         for(int i = 0; i < k; i++) {
-            medoidIndices.add(i);
+            medoidIndices.add(indicesList.get(i));
         }
         int iterations = 0;
         List<Integer> newMedoidsIndices = new ArrayList<Integer>();
         for(int i = 0; i < k; i++) {
-            newMedoidsIndices.add(i);
+            newMedoidsIndices.add(medoidIndices.get(i));
         }
         do {
             iterations++;
@@ -91,7 +93,10 @@ public class ParallelPAM {
             double oldTotalCost = getTotalCost(oldMedoidsIndex);
             int oriMedoidIndex = oldMedoidsIndex.get(i);
 
-            Tuple2<Integer, Double> minCostTuple = sc.parallelize(indicesList).mapToPair(new ParallelPAM.initKeyVal()).mapToPair(new ParallelPAM.ReplaceMedoid(oldMedoidsIndex, i)).min(new CostComparator());
+            Tuple2<Integer, Double> minCostTuple = sc.parallelize(indicesList)
+                                                    .mapToPair(new ParallelPAM.initKeyVal())
+                                                    .mapToPair(new ParallelPAM.ReplaceMedoid(oldMedoidsIndex, i))
+                                                    .min(new CostComparator());
             
             double newTotalCost = minCostTuple._2;
             int candidateMedoidIndex = minCostTuple._1;
@@ -106,7 +111,7 @@ public class ParallelPAM {
         return oldMedoidsIndex;
     }
 
-    private static double getTotalCost(List<Integer> medoidIndices) {
+    private static double getTotalCost(List<Integer> medoidIndices) { // ask if this should be parallelized
         double totalCost = 0;
         for (int i = 0; i < numPoints; ++i) {
             double cost = Double.MAX_VALUE;

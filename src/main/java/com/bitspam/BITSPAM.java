@@ -14,7 +14,7 @@ import org.apache.spark.storage.StorageLevel;
 import scala.Tuple2;
 
 public final class BITSPAM {
-	public static String eleDivider = ",";
+	public static String eleDivider = "\t";
 
 	/**
 	 * Read and parsing input files
