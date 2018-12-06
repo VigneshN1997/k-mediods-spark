@@ -16,6 +16,29 @@ public class PAM {
 		PAM.dimension = dimension;
 	}
 
+	public static double finalClusteringError(List<Point> kMedoids) {
+		double totalCost = 0;
+		int numOfClusters = kMedoids.size();
+		int numPoints = dataList.size();
+		for (int i = 0; i < numPoints; ++i) {
+			double cost = Double.MAX_VALUE;
+			double[] point1 = dataList.get(i).getAttr();
+            for (int j = 0; j < numOfClusters; ++j) {
+				double tempCost = 0;
+				double[] point2 = kMedoids.get(j).getAttr();
+				for(int ind = 0; ind < dimension; ind++) {
+					tempCost += (point1[ind] - point2[ind]) * (point1[ind] - point2[ind]);
+				}
+				tempCost = (double)Math.sqrt(tempCost);
+                if (tempCost < cost) {
+                    cost = tempCost;
+                }
+            }
+            totalCost += cost;
+		}
+		return totalCost;
+	}
+
 	public static class OriginalPAM implements PairFunction<Tuple2<String, List<Integer>>, String, List<Integer>> { // UG means uniform gridding
         double avgNumPointsPerCell;
 
@@ -104,12 +127,15 @@ public class PAM {
 				int candidateMedoidIndex = -1;
 
 				for (int j = 0; j < indices.size(); ++j) {
-					oldMedoidsIndex.set(i, j); // TODO: check first if j is not in medoid list
-					double tempTotalCost = getTotalCost(oldMedoidsIndex, preCalcResult, indices);
-					if (tempTotalCost < newTotalCost) {
-						newTotalCost = tempTotalCost;
-						candidateMedoidIndex = j;
+					if(!oldMedoidsIndex.contains(j)) {
+						oldMedoidsIndex.set(i, j); // TODO: check first if j is not in medoid list
+						double tempTotalCost = getTotalCost(oldMedoidsIndex, preCalcResult, indices);
+						if (tempTotalCost < newTotalCost) {
+							newTotalCost = tempTotalCost;
+							candidateMedoidIndex = j;
+						}
 					}
+					
 				}
 				if (newTotalCost < oldTotalCost) {
 					oldMedoidsIndex.set(i, candidateMedoidIndex);

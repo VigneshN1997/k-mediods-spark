@@ -66,7 +66,7 @@ public class ParallelPAM {
 		}
     }
     
-    public static class ReplaceMedoid implements PairFunction<Tuple2<Integer, Double>, Integer, Double> {
+    public static class ReplaceMedoid implements PairFunction<Integer, Integer, Double> {
         
         List<Integer> medoidIndices;
         int indexToReplace;
@@ -77,13 +77,13 @@ public class ParallelPAM {
         }
 
         @Override
-        public Tuple2<Integer, Double> call(Tuple2<Integer, Double> tup) throws Exception {
+        public Tuple2<Integer, Double> call(Integer tup) throws Exception {
             double cost = Double.MAX_VALUE;
-            if(!medoidIndices.contains(tup._1)) {
-                medoidIndices.set(indexToReplace, tup._1);
+            if(!medoidIndices.contains(tup)) {
+                medoidIndices.set(indexToReplace, tup);
                 cost = getTotalCost(medoidIndices);
             }
-            return new Tuple2<Integer, Double>(tup._1, cost);
+            return new Tuple2<Integer, Double>(tup, cost);
         }
 	}
 
@@ -94,7 +94,6 @@ public class ParallelPAM {
             int oriMedoidIndex = oldMedoidsIndex.get(i);
 
             Tuple2<Integer, Double> minCostTuple = sc.parallelize(indicesList)
-                                                    .mapToPair(new ParallelPAM.initKeyVal())
                                                     .mapToPair(new ParallelPAM.ReplaceMedoid(oldMedoidsIndex, i))
                                                     .min(new CostComparator());
             

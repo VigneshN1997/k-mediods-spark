@@ -4,6 +4,7 @@ package com.bitspam;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -26,7 +27,7 @@ public class MainDriver {
 		int numOfCores = Integer.parseInt(args[1]);
 		int tau = Integer.parseInt(args[2]);
 		int numOfClusters = Integer.parseInt(args[3]);
-		// int numOfIteration = Integer.parseInt(args[5]);
+		int numOfIterations = Integer.parseInt(args[4]);
 
 		// setup Spark configuration
 		SparkConf sparkConf = new SparkConf().setAppName("k-mediods-BITS");
@@ -70,24 +71,12 @@ public class MainDriver {
 		ParallelPAM.initializeParallelPAM(samplePoints, dataSetList, dimension, numOfClusters);
 		ParallelPAM.calculateDistancesBetweenPoints(sc);
 		List<Integer> medoidIndices = ParallelPAM.applyParallelPAM(sc);
-		
-		double totalCost = 0;
-		for (i = 0; i < numPoints; ++i) {
-			double cost = Double.MAX_VALUE;
-			double[] point1 = dataSetList.get(i).getAttr();
-            for (int j = 0; j < numOfClusters; ++j) {
-				double tempCost = 0;
-				double[] point2 = dataSetList.get(medoidIndices.get(j)).getAttr();
-				for(int ind = 0; ind < dimension; ind++) {
-					tempCost += (point1[ind] - point2[ind]) * (point1[ind] - point2[ind]);
-				}
-				tempCost = (double)Math.sqrt(tempCost);
-                if (tempCost < cost) {
-                    cost = tempCost;
-                }
-            }
-            totalCost += cost;
-        }
+		List<Point> bestSeed = new ArrayList<Point>();
+		for(Integer mIndex: medoidIndices) {
+			bestSeed.add(dataSetList.get(mIndex));
+		}
+
+		double totalCost = PAM.finalClusteringError(bestSeed);
 
 		System.out.println("sample size: " + samplePoints.size());
 		System.out.print("final medoids:");
@@ -95,7 +84,20 @@ public class MainDriver {
 			System.out.print(medoidIndices.get(i) + ",");
 		}
 		System.out.println();
-		System.out.println("total cost:" + totalCost);
+		System.out.println("total cost after phase 1:" + totalCost);
+		Weiszfeld.initializeWeiszfeld(dataSetList, numPoints, 0.01, numOfClusters, dimension, -1);
+		
+		List<Point> finalMedoids = null;
+		for(i = 0; i < numOfIterations; i++) {
+			finalMedoids = Weiszfeld.refinement(sc, bestSeed);
+			for(int j = 0; j < numOfClusters; j++) {
+				bestSeed.set(j, finalMedoids.get(j));
+			}
+			double cost = PAM.finalClusteringError(finalMedoids);
+			System.out.println("total cost after phase 2 iteration:" + i + " : " + cost);
+		}
+
+
 		// List<Tuple2<String, Integer>> uniformList = adaptiveRDD.collect();
 		// for (i = 0; i < numPoints; i++) {
 		// 	System.out.println(uniformList.get(i)._1 + "  " + uniformList.get(i)._2);
