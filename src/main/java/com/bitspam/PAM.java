@@ -49,7 +49,7 @@ public class PAM {
 		public Tuple2<String, List<Integer>> call(Tuple2<String, List<Integer>> griddedCell) {
 			List<Integer> indices = griddedCell._2;
             int numPoints = indices.size();
-            int k = (int)Math.ceil(avgNumPointsPerCell/ numPoints);
+            int k = (int)Math.ceil(numPoints / avgNumPointsPerCell);
 			double[][] preCalculatedResult = new double[numPoints][numPoints];
 			Collections.shuffle(indices);
 			List<Integer> medoidIndices = new ArrayList<Integer>();
@@ -128,7 +128,7 @@ public class PAM {
 
 				for (int j = 0; j < indices.size(); ++j) {
 					if(!oldMedoidsIndex.contains(j)) {
-						oldMedoidsIndex.set(i, j); // TODO: check first if j is not in medoid list
+						oldMedoidsIndex.set(i, j);
 						double tempTotalCost = getTotalCost(oldMedoidsIndex, preCalcResult, indices);
 						if (tempTotalCost < newTotalCost) {
 							newTotalCost = tempTotalCost;

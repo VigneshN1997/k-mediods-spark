@@ -21,22 +21,22 @@ public class MainDriver {
 
 		// read arguments
 		int i;
-		String inputPath = args[0];
+		String master = args[0];
+		String inputPath = args[1];
 		// int numOfSampledObjects = Integer.parseInt(args[2]);
 		// int numOfSamples = Integer.parseInt(args[3]);
-		int numOfCores = Integer.parseInt(args[1]);
-		int tau = Integer.parseInt(args[2]);
-		int numOfClusters = Integer.parseInt(args[3]);
-		int numOfIterations = Integer.parseInt(args[4]);
+		int numOfCores = Integer.parseInt(args[2]);
+		int tau = Integer.parseInt(args[3]);
+		int numOfClusters = Integer.parseInt(args[4]);
+		int numOfIterations = Integer.parseInt(args[5]);
 
 		// setup Spark configuration
 		SparkConf sparkConf = new SparkConf().setAppName("k-mediods-BITS");
+//		JavaSparkContext sc = new JavaSparkContext(master, "k-mediods-BITS", sparkConf);
 		JavaSparkContext sc = new JavaSparkContext(sparkConf);
-
 		// set-up output path
-		FileWriter fw = new FileWriter("PAMAE_OUTPUT.txt");
-		BufferedWriter bw = new BufferedWriter(fw);
-
+//		FileWriter fw = new FileWriter("OUTPUT.txt", true);
+		System.out.println("\n\n\n result for: " + inputPath + " k:" + numOfClusters + " tau: " + tau + "\n");
 		JavaRDD<Point> dataSetRDD = BITSPAM.readFile(sc, inputPath, numOfCores);
 		List<Point> dataSetList = dataSetRDD.collect();
 
@@ -57,16 +57,18 @@ public class MainDriver {
 		JavaPairRDD<String, Integer> uniformRDD = BITSPAM.initializeRDD(sc, numPoints).mapToPair(new Gridding.assignKeyToPointUG());
 		int count = Gridding.getNumberOfKeys();
 		double numPointsPerCell = (double)numPoints / (double)count;
-		System.out.println("count: " + count + "  numPointsPerCell:" + numPointsPerCell);
+		System.out.println("ug done, cell count: " + count + " avg  numPointsPerCell:" + numPointsPerCell + "\n");
 		uniformRDD.partitionBy(new HashPartitioner(numOfCores));
 		Map<String, Long> cellCount = uniformRDD.countByKey();
 		JavaPairRDD<String, Integer> adaptiveRDD = Gridding.applyAdaptiveGridding(sc, uniformRDD.collect(), cellCount);
+		System.out.println("adaptive gridding done, num cells:" + Gridding.getNumberOfKeys() + "\n");
 		// Gridding.printHashMaps();
-		double avgNumPointsPerCell = (double)Gridding.getNumberOfKeys() / numPoints;
+		double avgNumPointsPerCell = (double)numPoints / Gridding.getNumberOfKeys();
 		List<Integer> samplePoints = adaptiveRDD.mapToPair(new Gridding.mapToList())
 											.reduceByKey(new Gridding.reduceLists())
 											.mapToPair(new PAM.OriginalPAM(avgNumPointsPerCell))
 											.values().reduce(new Gridding.reduceLists());
+		System.out.println("sample size: " + samplePoints.size() + "\n");
 
 		ParallelPAM.initializeParallelPAM(samplePoints, dataSetList, dimension, numOfClusters);
 		ParallelPAM.calculateDistancesBetweenPoints(sc);
@@ -78,13 +80,13 @@ public class MainDriver {
 
 		double totalCost = PAM.finalClusteringError(bestSeed);
 
-		System.out.println("sample size: " + samplePoints.size());
-		System.out.print("final medoids:");
-		for(i = 0; i < numOfClusters; i++) {
-			System.out.print(medoidIndices.get(i) + ",");
-		}
-		System.out.println();
-		System.out.println("total cost after phase 1:" + totalCost);
+		
+//		fw.write("final medoids:");
+//		for(i = 0; i < numOfClusters; i++) {
+//			System.out.print(medoidIndices.get(i) + ",");
+//		}
+//		System.out.println();
+		System.out.println("total cost after phase 1:" + totalCost + "\n");
 		Weiszfeld.initializeWeiszfeld(dataSetList, numPoints, 0.01, numOfClusters, dimension, -1);
 		
 		List<Point> finalMedoids = null;
@@ -94,8 +96,9 @@ public class MainDriver {
 				bestSeed.set(j, finalMedoids.get(j));
 			}
 			double cost = PAM.finalClusteringError(finalMedoids);
-			System.out.println("total cost after phase 2 iteration:" + i + " : " + cost);
+			System.out.println("total cost after phase 2 iteration:" + i + " : " + cost + "\n");
 		}
+//		fw.close();
 
 
 		// List<Tuple2<String, Integer>> uniformList = adaptiveRDD.collect();

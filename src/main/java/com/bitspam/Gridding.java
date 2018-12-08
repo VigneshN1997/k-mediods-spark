@@ -79,7 +79,12 @@ public class Gridding {
             for(int i = 0; i < dimension; i++) {
                 cellNumArr[i] = (int)Math.floor((dataSetList.get(pi._2).getAttr()[i] - minGridPoint[i]) / initialCellSize);
             }
-            return new Tuple2<String,Integer>(globalPositioningIndex.get(convertCellNumArrToString(cellNumArr)).toString(), pi._2);
+            Integer cellId = globalPositioningIndex.get(convertCellNumArrToString(cellNumArr));
+            if(cellId != null) {
+            	return new Tuple2<String, Integer>(cellId.toString(), pi._2);
+            }
+            System.out.println("no key found for:" + convertCellNumArrToString(cellNumArr) + "::" +pi._2);
+            return new Tuple2<String,Integer>("", pi._2);
 		}
 	}
 

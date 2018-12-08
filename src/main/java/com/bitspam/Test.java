@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
@@ -16,19 +17,19 @@ public class Test {
 	public static void main(String[] args) {
 		SparkConf sparkConf = new SparkConf().setAppName("k-mediods-BITS");
 		JavaSparkContext sc = new JavaSparkContext(sparkConf);
-		List<Tuple2<String, Integer>> ls = new ArrayList<Tuple2<String, Integer>>();
-		ls.add(new Tuple2<String, Integer>("a.b.c", 0));
-		ls.add(new Tuple2<String, Integer>("b.d.e", 2));
-		ls.add(new Tuple2<String, Integer>("b.d.e", 5));
-		ls.add(new Tuple2<String, Integer>("b.d.e", 6));
-		ls.add(new Tuple2<String, Integer>("b.d", 7));
-		ls.add(new Tuple2<String, Integer>("a.b.c", 1));
-		ls.add(new Tuple2<String, Integer>("a.b.c", 3));
-		ls.add(new Tuple2<String, Integer>("a.b.c", 4));
-		JavaPairRDD<String, Integer> rdd = JavaPairRDD.fromJavaRDD(sc.parallelize(ls));
-		JavaPairRDD<String, List<Integer>> rdd1 = rdd.mapToPair(new Test.abc());
-		JavaPairRDD<String, List<Integer>> rdd2 = rdd1.reduceByKey(new Test.def());
-		List<Integer>  x = rdd2.values().reduce(new Test.ghi());
+		// List<Tuple2<String, Integer>> ls = new ArrayList<Tuple2<String, Integer>>();
+		// ls.add(new Tuple2<String, Integer>("a.b.c", 0));
+		// ls.add(new Tuple2<String, Integer>("b.d.e", 2));
+		// ls.add(new Tuple2<String, Integer>("b.d.e", 5));
+		// ls.add(new Tuple2<String, Integer>("b.d.e", 6));
+		// ls.add(new Tuple2<String, Integer>("b.d", 7));
+		// ls.add(new Tuple2<String, Integer>("a.b.c", 1));
+		// ls.add(new Tuple2<String, Integer>("a.b.c", 3));
+		// ls.add(new Tuple2<String, Integer>("a.b.c", 4));
+		// JavaPairRDD<String, Integer> rdd = JavaPairRDD.fromJavaRDD(sc.parallelize(ls));
+		// JavaPairRDD<String, List<Integer>> rdd1 = rdd.mapToPair(new Test.abc());
+		// JavaPairRDD<String, List<Integer>> rdd2 = rdd1.reduceByKey(new Test.def());
+		// List<Integer>  x = rdd2.values().reduce(new Test.ghi());
 		// List<Tuple2<String, List<Integer>>> lis = rdd2.collect();
 		// for(Tuple2<String, List<Integer>> elem : lis) {
 		// 	System.out.print(elem._1 + "  ");
@@ -45,8 +46,14 @@ public class Test {
 		// 	}
 		// 	System.out.println();
 		// }
-		for(Integer i : x) {
-			System.out.println(i);
+		// for(Integer i : x) {
+		// 	System.out.println(i);
+		// }
+		String inputPath = args[0];
+		JavaRDD<String> dataSetRDD = sc.textFile(inputPath, 4);
+		List<String> ls = dataSetRDD.collect();
+		for(String s: ls) {
+			System.out.println(s);
 		}
 	}
 
