@@ -1,5 +1,6 @@
 package com.bitspam;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -12,23 +13,24 @@ import org.apache.spark.api.java.function.PairFunction;
 
 import scala.Tuple2;
 
-public class ParallelPAM {
-    private static double[][] preCalcResult;
-    private static List<Integer> pointIndices;
-    private static int numPoints;
-    private static List<Point> dataList;
-	private static int dimension;
-    private static int k;
+public class ParallelPAM implements Serializable{
+    private double[][] preCalcResult;
+    private List<Integer> pointIndices;
+    private int numPoints;
+    private List<Point> dataList;
+	private int dimension;
+    private int k;
 
-    public static void initializeParallelPAM(List<Integer> pointIndices,List<Point> dataList, int dimension, int k) {
-        ParallelPAM.pointIndices = pointIndices;
-        ParallelPAM.k = k;
-        ParallelPAM.numPoints = pointIndices.size();
-        ParallelPAM.preCalcResult = new double[ParallelPAM.numPoints][ParallelPAM.numPoints];
-        ParallelPAM.dataList = dataList;
-		ParallelPAM.dimension = dimension;
+    public ParallelPAM(List<Integer> pointIndices,List<Point> dataList, int dimension, int k) {
+        this.pointIndices = pointIndices;
+        this.k = k;
+        this.numPoints = pointIndices.size();
+        this.preCalcResult = new double[this.numPoints][this.numPoints];
+        this.dataList = dataList;
+		this.dimension = dimension;
     }
-   public static void calculateDistancesBetweenPoints(JavaSparkContext sc) {
+
+   public void calculateDistancesBetweenPoints(JavaSparkContext sc) {
        List<Integer> indicesList = new ArrayList<Integer>();
        for(int i = 0; i < numPoints; i++) {
            indicesList.add(i);
@@ -36,7 +38,7 @@ public class ParallelPAM {
        sc.parallelize(indicesList).map(new calculateDistancesForAPoint()).collect();
    }
 
-    public static List<Integer> applyParallelPAM(JavaSparkContext sc) {
+    public List<Integer> applyParallelPAM(JavaSparkContext sc) {
         List<Integer> indicesList = IntStream.rangeClosed(0, numPoints -1).boxed().collect(Collectors.toList());
         Collections.shuffle(indicesList);
         List<Integer> medoidIndices = new ArrayList<Integer>();
@@ -60,13 +62,13 @@ public class ParallelPAM {
         return finalCellMedoids;
     }
 
-    public static class initKeyVal implements PairFunction<Integer, Integer, Double> {
+    public class initKeyVal implements PairFunction<Integer, Integer, Double> {
 		public Tuple2< Integer, Double> call(Integer index) {
 			return new Tuple2<Integer, Double>(index, Double.MAX_VALUE);
 		}
     }
     
-    public static class ReplaceMedoid implements PairFunction<Integer, Integer, Double> {
+    public class ReplaceMedoid implements PairFunction<Integer, Integer, Double> {
         
         List<Integer> medoidIndices;
         int indexToReplace;
@@ -87,7 +89,7 @@ public class ParallelPAM {
         }
 	}
 
-    private static List<Integer> calculateNewMedoids(List<Integer> oldMedoidsIndex, List<Integer> indicesList, JavaSparkContext sc) {
+    private List<Integer> calculateNewMedoids(List<Integer> oldMedoidsIndex, List<Integer> indicesList, JavaSparkContext sc) {
         for (int i = 0; i < oldMedoidsIndex.size(); ++i) {
 
             double oldTotalCost = getTotalCost(oldMedoidsIndex);
@@ -110,7 +112,7 @@ public class ParallelPAM {
         return oldMedoidsIndex;
     }
 
-    private static double getTotalCost(List<Integer> medoidIndices) { // ask if this should be parallelized
+    private double getTotalCost(List<Integer> medoidIndices) { // ask if this should be parallelized
         double totalCost = 0;
         for (int i = 0; i < numPoints; ++i) {
             double cost = Double.MAX_VALUE;
@@ -125,7 +127,7 @@ public class ParallelPAM {
         return totalCost;
     }
 
-    private static boolean stopIterations(List<Integer> newMedoids, List<Integer> oldMedoids) {
+    private boolean stopIterations(List<Integer> newMedoids, List<Integer> oldMedoids) {
         boolean stopIterations = true;
         
         for(int i = 0; i < newMedoids.size(); i++){
@@ -137,7 +139,7 @@ public class ParallelPAM {
         return stopIterations;
     }
 
-   public static class calculateDistancesForAPoint implements Function<Integer, Integer> {
+   public class calculateDistancesForAPoint implements Function<Integer, Integer> {
 
        @Override
        public Integer call(Integer ind) throws Exception {

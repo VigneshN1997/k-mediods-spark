@@ -1,5 +1,6 @@
 package com.bitspam;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -16,24 +17,24 @@ import org.apache.spark.api.java.function.PairFunction;
 
 import scala.Tuple2;
 
-public class Weiszfeld {
-    private static List<Point> dataList;
-    private static int numPoints;
-    private static double epsilon = 0.01;
-    private static int k;
-    private static int dimension;
-    private static int numIterations;
+public class Weiszfeld implements Serializable {
+    private List<Point> dataList;
+    private int numPoints;
+    private double epsilon = 0.01;
+    private int k;
+    private int dimension;
+    private int numIterations;
 
-    public static void initializeWeiszfeld(List<Point> dataList, int numPoints, double epsilon, int k, int dimension, int numIterations) {
-        Weiszfeld.dataList = dataList;
-        Weiszfeld.numPoints = numPoints;
-        Weiszfeld.epsilon = epsilon;
-        Weiszfeld.k = k;
-        Weiszfeld.dimension = dimension;
-        Weiszfeld.numIterations = numIterations;
+    public Weiszfeld(List<Point> dataList, int numPoints, double epsilon, int k, int dimension, int numIterations) {
+        this.dataList = dataList;
+        this.numPoints = numPoints;
+        this.epsilon = epsilon;
+        this.k = k;
+        this.dimension = dimension;
+        this.numIterations = numIterations;
     }
 
-    public static List<Point> refinement(JavaSparkContext sc, List<Point> kMedoids) {
+    public List<Point> refinement(JavaSparkContext sc, List<Point> kMedoids) {
         // System.out.println("num:" + kMedoids.size());
         List<Integer> indicesList = IntStream.rangeClosed(0, numPoints -1).boxed().collect(Collectors.toList());
         List<Point> newKMedoids = sc.parallelize(indicesList)
@@ -58,7 +59,7 @@ public class Weiszfeld {
         return newKMedoids;
     }
 
-    public static class AssignCluster implements PairFunction<Integer, Integer, Integer> {
+    public class AssignCluster implements PairFunction<Integer, Integer, Integer> {
         List<Point> kMedoids;
 
         public AssignCluster(List<Point> kMedoids) {
@@ -89,7 +90,7 @@ public class Weiszfeld {
         }
     }
 
-    public static class initList implements PairFunction<Tuple2<Integer, Integer>, Integer, List<Integer>> {
+    public class initList implements PairFunction<Tuple2<Integer, Integer>, Integer, List<Integer>> {
 
 		public Tuple2<Integer, List<Integer>> call(Tuple2<Integer, Integer> pi) {
 			List<Integer> ls = new ArrayList<Integer>();
@@ -98,7 +99,7 @@ public class Weiszfeld {
 		}
 	} 
 	
-	public static class combineSameClusterPoints implements Function2<List<Integer>, List<Integer>, List<Integer>> {
+	public class combineSameClusterPoints implements Function2<List<Integer>, List<Integer>, List<Integer>> {
 
 		public List<Integer> call(List<Integer> l1, List<Integer> l2) {
 			List<Integer> ls = new ArrayList<Integer>(l1);
@@ -107,7 +108,7 @@ public class Weiszfeld {
 		}
     }
     
-    public static class WeiszfeldAlgorithm implements PairFunction<Tuple2<Integer, List<Integer>>, Integer, Point> {
+    public class WeiszfeldAlgorithm implements PairFunction<Tuple2<Integer, List<Integer>>, Integer, Point> {
 
         List<Point> kMedoids;
 

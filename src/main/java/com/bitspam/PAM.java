@@ -1,5 +1,6 @@
 package com.bitspam;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -8,15 +9,16 @@ import org.apache.spark.api.java.function.PairFunction;
 
 import scala.Tuple2;
 
-public class PAM {
-	private static List<Point> dataList;
-	private static int dimension;
-	public static void initializePAM(List<Point> dataList, int dimension) {
-		PAM.dataList = dataList;
-		PAM.dimension = dimension;
+public class PAM implements Serializable{
+	private List<Point> dataList;
+	private int dimension;
+	
+	public PAM(List<Point> dataList, int dimension) {
+		this.dataList = dataList;
+		this.dimension = dimension;
 	}
 
-	public static double finalClusteringError(List<Point> kMedoids) {
+	public double finalClusteringError(List<Point> kMedoids) {
 		double totalCost = 0;
 		int numOfClusters = kMedoids.size();
 		int numPoints = dataList.size();
@@ -39,7 +41,7 @@ public class PAM {
 		return totalCost;
 	}
 
-	public static class OriginalPAM implements PairFunction<Tuple2<String, List<Integer>>, String, List<Integer>> { // UG means uniform gridding
+	public class OriginalPAM implements PairFunction<Tuple2<String, List<Integer>>, String, List<Integer>> { // UG means uniform gridding
         double avgNumPointsPerCell;
 
 		public OriginalPAM(double avgNumPointsPerCell) {
@@ -50,7 +52,7 @@ public class PAM {
 			List<Integer> indices = griddedCell._2;
             int numPoints = indices.size();
             int k = (int)Math.ceil(numPoints / avgNumPointsPerCell);
-			double[][] preCalculatedResult = new double[numPoints][numPoints];
+//			double[][] preCalculatedResult = new double[numPoints][numPoints];
 			Collections.shuffle(indices);
 			List<Integer> medoidIndices = new ArrayList<Integer>();
 			for(int i = 0; i < k; i++) {
@@ -78,12 +80,12 @@ public class PAM {
 					for (int i = 0; i < k; ++i) {
 						oldMedoidIndices.add(medoidIndices.get(i));
 					}
-					newMedoidsIndices = calculateNewMedoids(oldMedoidIndices, preCalculatedResult, indices);
+					newMedoidsIndices = calculateNewMedoids(oldMedoidIndices, indices);
 					// free(oldMedoidsIndex);
 				}
 
 				else {
-					newMedoidsIndices = calculateNewMedoids(newMedoidsIndices, preCalculatedResult, indices);
+					newMedoidsIndices = calculateNewMedoids(newMedoidsIndices, indices);
 				}
             } while(!stopIterations(newMedoidsIndices, medoidIndices));
             
@@ -94,17 +96,14 @@ public class PAM {
             return new Tuple2<String, List<Integer>>(griddedCell._1, finalCellMedoids);
 		}
 
-		private double calculateDistance(int i, int j, double[][] preCalculatedResult, List<Integer> indiceList) {
-			if(preCalculatedResult[i][j] == 0) {
-				double distance = 0;
-				double[] point1 = dataList.get(indiceList.get(i)).getAttr();
-				double[] point2 =  dataList.get(indiceList.get(j)).getAttr();
-				for(int ind = 0; ind < dimension; ind++) {
-					distance += (point1[ind] - point2[ind]) * (point1[ind] - point2[ind]);
-				}
-				preCalculatedResult[i][j] = (double)Math.sqrt(distance);
+		private double calculateDistance(int i, int j, List<Integer> indiceList) {
+			double distance = 0;
+			double[] point1 = dataList.get(indiceList.get(i)).getAttr();
+			double[] point2 =  dataList.get(indiceList.get(j)).getAttr();
+			for(int ind = 0; ind < dimension; ind++) {
+				distance += (point1[ind] - point2[ind]) * (point1[ind] - point2[ind]);
 			}
-			return preCalculatedResult[i][j];
+			return (double)Math.sqrt(distance);
 		}
 	
 		private boolean stopIterations(List<Integer> newMedoids, List<Integer> oldMedoids) {
@@ -119,9 +118,9 @@ public class PAM {
 			return stopIterations;
 		}
 	
-		private List<Integer> calculateNewMedoids(List<Integer> oldMedoidsIndex, double[][] preCalcResult, List<Integer> indices) {
+		private List<Integer> calculateNewMedoids(List<Integer> oldMedoidsIndex, List<Integer> indices) {
 			for (int i = 0; i < oldMedoidsIndex.size(); ++i) {
-				double oldTotalCost = getTotalCost(oldMedoidsIndex, preCalcResult, indices);
+				double oldTotalCost = getTotalCost(oldMedoidsIndex, indices);
 				double newTotalCost = Double.MAX_VALUE;
 				int oriMedoidIndex = oldMedoidsIndex.get(i);
 				int candidateMedoidIndex = -1;
@@ -129,7 +128,7 @@ public class PAM {
 				for (int j = 0; j < indices.size(); ++j) {
 					if(!oldMedoidsIndex.contains(j)) {
 						oldMedoidsIndex.set(i, j);
-						double tempTotalCost = getTotalCost(oldMedoidsIndex, preCalcResult, indices);
+						double tempTotalCost = getTotalCost(oldMedoidsIndex, indices);
 						if (tempTotalCost < newTotalCost) {
 							newTotalCost = tempTotalCost;
 							candidateMedoidIndex = j;
@@ -146,12 +145,12 @@ public class PAM {
 			}
 			return oldMedoidsIndex;
 		}
-		private double getTotalCost(List<Integer> newMedoidsIndex, double[][] preCalcResult, List<Integer> indices) {
+		private double getTotalCost(List<Integer> newMedoidsIndex, List<Integer> indices) {
 			double totalCost = 0;
 			for (int i = 0; i < indices.size(); ++i) {
 				double cost = Double.MAX_VALUE;
 				for (int j = 0; j < newMedoidsIndex.size(); ++j) {
-					double tempCost = calculateDistance(i, newMedoidsIndex.get(j), preCalcResult, indices);
+					double tempCost = calculateDistance(i, newMedoidsIndex.get(j), indices);
 					if (tempCost < cost) {
 						cost = tempCost;
 					}

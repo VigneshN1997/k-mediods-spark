@@ -1,11 +1,11 @@
 package com.bitspam;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.spark.HashPartitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function2;
@@ -13,28 +13,28 @@ import org.apache.spark.api.java.function.PairFunction;
 
 import scala.Tuple2;
 
-public class Gridding {
+public class Gridding implements Serializable{
 
 
-    private static HashMap<String, Integer> globalPositioningIndex = new HashMap<String, Integer>();
-    private static HashMap<String, Tuple2<Double[], Double[]>> keyToCell = new HashMap<String, Tuple2<Double[], Double[]>>();
-    private static double initialCellSize;
-    private static int globalIndex = 0;
-    private static double[] minGridPoint = null;
-    private static double[] maxGridPoint = null;
-    private static int dimension;
-    private static List<Point> dataSetList;
-    private static int tau;
+    private HashMap<String, Integer> globalPositioningIndex = new HashMap<String, Integer>();
+    private HashMap<String, Tuple2<Double[], Double[]>> keyToCell = new HashMap<String, Tuple2<Double[], Double[]>>();
+    private double initialCellSize;
+    private int globalIndex = 0;
+    private double[] minGridPoint = null;
+    private double[] maxGridPoint = null;
+    private int dimension;
+    private List<Point> dataSetList;
+    private int tau;
 
-    public static void initializeGridding(int dimension, double[] minGridPoint, double[] maxGridPoint, List<Point> dataSetList, int tau) {
-        Gridding.dimension = dimension;
-        Gridding.minGridPoint = minGridPoint;
-        Gridding.maxGridPoint = maxGridPoint;
-        Gridding.dataSetList = dataSetList;
-        Gridding.tau = tau;
+    public Gridding(int dimension, double[] minGridPoint, double[] maxGridPoint, List<Point> dataSetList, int tau) {
+        this.dimension = dimension;
+        this.minGridPoint = minGridPoint;
+        this.maxGridPoint = maxGridPoint;
+        this.dataSetList = dataSetList;
+        this.tau = tau;
     }
 
-    public static void findOptCellSize(int tau, int numPoints) {
+    public void findOptCellSize(int tau, int numPoints) {
         double volume = 1;
         double cellVolume;
         int i;
@@ -46,7 +46,7 @@ public class Gridding {
     }
 
     // This function is a recursive function which is used for filling the hash map data structure with cell numbers and cell bounds 
-    public static void getCellKeys(int currDimNum, double[] minPointAcc, double[] maxPointAcc, int[] cellNumArr) {
+    public void getCellKeys(int currDimNum, double[] minPointAcc, double[] maxPointAcc, int[] cellNumArr) {
         if(currDimNum == dimension) {
             String cellNumStr = convertCellNumArrToString(cellNumArr);
             Double[] minPointArr = new Double[dimension];
@@ -72,7 +72,7 @@ public class Gridding {
         }
     }
 
-    public static class assignKeyToPointUG implements PairFunction<Tuple2<String, Integer>, String, Integer> { // UG means uniform gridding
+    public class assignKeyToPointUG implements PairFunction<Tuple2<String, Integer>, String, Integer> { // UG means uniform gridding
 
 		public Tuple2<String, Integer> call(Tuple2<String, Integer> pi) {
             int[] cellNumArr = new int[dimension];
@@ -80,15 +80,17 @@ public class Gridding {
                 cellNumArr[i] = (int)Math.floor((dataSetList.get(pi._2).getAttr()[i] - minGridPoint[i]) / initialCellSize);
             }
             Integer cellId = globalPositioningIndex.get(convertCellNumArrToString(cellNumArr));
-            if(cellId != null) {
+            // if(cellId != null) {
             	return new Tuple2<String, Integer>(cellId.toString(), pi._2);
-            }
-            System.out.println("no key found for:" + convertCellNumArrToString(cellNumArr) + "::" +pi._2);
-            return new Tuple2<String,Integer>("", pi._2);
+            // }
+            // else {
+            // 	System.out.println("no key found(in uniform gridding) for:" + convertCellNumArrToString(cellNumArr) + "::" +pi._2);
+            //     return new Tuple2<String,Integer>("", pi._2);
+            // }
 		}
 	}
 
-    public static String convertCellNumArrToString(int[] cellNumArr) {
+    public String convertCellNumArrToString(int[] cellNumArr) {
         StringBuilder str = new StringBuilder("");
         for(int i = 0; i < dimension; i++) {
             str.append(cellNumArr[i]);
@@ -99,7 +101,7 @@ public class Gridding {
     }
 
     // this function applies uniform gridding to points and assigns a cell number to each point
-    public static void applyUniformGridding() {
+    public void applyUniformGridding() {
         int currDimNum = 0;
         double[] minPointAcc = new double[dimension];
         double[] maxPointAcc = new double[dimension];
@@ -108,14 +110,14 @@ public class Gridding {
     	getCellKeys(currDimNum, minPointAcc, maxPointAcc, cellNumArr);
     }
 
-    public static void printHashMaps() {
+    public void printHashMaps() {
         System.out.println("Global Positioning index:");
         for (Map.Entry<String, Integer> entry : globalPositioningIndex.entrySet()) {
             System.out.println(entry.getKey() + ":::::" + entry.getValue());
         }
     }
 
-    public static JavaPairRDD<String, Integer> applyAdaptiveGridding(JavaSparkContext sc, List<Tuple2<String, Integer>> adaptiveRDDList, Map<String, Long> cellCount) {
+    public JavaPairRDD<String, Integer> applyAdaptiveGridding(JavaSparkContext sc, List<Tuple2<String, Integer>> adaptiveRDDList, Map<String, Long> cellCount) {
         double[] minPointAcc = new double[dimension];
         double[] maxPointAcc = new double[dimension];
         String cellKey;
@@ -129,26 +131,31 @@ public class Gridding {
             boolean adaptiveGriddingDone = true;
             // System.out.println("cellcount in itr:" + itr);
             for(Map.Entry<String, Long> entry: cellCount.entrySet()) {
-                // System.out.print(entry.getKey() + "    " + entry.getValue() + "  " + (entry.getValue() <= tau) + "  ");
+            	// System.out.print(entry.getKey() + "    " + entry.getValue() + "  " + (entry.getValue() <= tau) + "  ");
                 cellKey = entry.getKey();
                 pair = keyToCell.get(cellKey);
-                minGridDim = pair._1;
-                maxGridDim = pair._2;
-                // for(int j = 0; j < dimension; j++) {
-                //     System.out.print(minGridDim[j] + ",");
+                // if(pair != null) {
+                	minGridDim = pair._1;
+                    maxGridDim = pair._2;
+                    // for(int j = 0; j < dimension; j++) {
+                    //     System.out.print(minGridDim[j] + ",");
+                    // }
+                    // System.out.print("  ");
+                    // for(int j = 0; j < dimension; j++) {
+                    //     System.out.println(maxGridDim[j] + ",");
+                    // }
+                    // System.out.println();
+                    if(entry.getValue() > tau) {
+                        keysToBeRemoved.add(entry.getKey());
+                        adaptiveGriddingDone = false;
+                        
+                        
+                        getCellKeysAdaptive(0, minPointAcc, maxPointAcc, cellNumArr, minGridDim, maxGridDim, cellKey);
+                    }
                 // }
-                // System.out.print("  ");
-                // for(int j = 0; j < dimension; j++) {
-                //     System.out.println(maxGridDim[j] + ",");
+                // else {
+                	// System.out.println("no key found (in adaptive gridding) for:" + cellKey);
                 // }
-                // System.out.println();
-                if(entry.getValue() > tau) {
-                    keysToBeRemoved.add(entry.getKey());
-                    adaptiveGriddingDone = false;
-                    
-                    
-                    getCellKeysAdaptive(0, minPointAcc, maxPointAcc, cellNumArr, minGridDim, maxGridDim, cellKey);
-                }
             }
             if(adaptiveGriddingDone) {
                 return JavaPairRDD.fromJavaRDD(sc.parallelize(adaptiveRDDList));
@@ -165,7 +172,7 @@ public class Gridding {
         }
     }
     
-    public static void getCellKeysAdaptive(int currDimNum, double[] minPointAcc, double[] maxPointAcc, int[] cellNumArr, Double[] minGridDim, Double[] maxGridDim, String existingKey) {
+    public void getCellKeysAdaptive(int currDimNum, double[] minPointAcc, double[] maxPointAcc, int[] cellNumArr, Double[] minGridDim, Double[] maxGridDim, String existingKey) {
         if(currDimNum == dimension) {
             String cellNumStr = convertCellNumArrToString(cellNumArr);
             Double[] minPointArr = new Double[dimension];
@@ -192,7 +199,7 @@ public class Gridding {
         }
     }
 
-    public static class adaptiveGridding implements PairFunction<Tuple2<String, Integer>, String, Integer> { // UG means uniform gridding
+    public class adaptiveGridding implements PairFunction<Tuple2<String, Integer>, String, Integer> { // UG means uniform gridding
         private Map<String, Long> cellCount;
 
         public adaptiveGridding(Map<String, Long> cellCount) {
@@ -220,11 +227,11 @@ public class Gridding {
 		}
 	} 
     
-    public static int getNumberOfKeys() {
+    public int getNumberOfKeys() {
     	return keyToCell.keySet().size();
     }
 
-    public static class mapToList implements PairFunction<Tuple2<String, Integer>, String, List<Integer>> { // UG means uniform gridding
+    public class mapToList implements PairFunction<Tuple2<String, Integer>, String, List<Integer>> { // UG means uniform gridding
 
 		public Tuple2<String, List<Integer>> call(Tuple2<String, Integer> pi) {
 			List<Integer> ls = new ArrayList<Integer>();
@@ -233,7 +240,7 @@ public class Gridding {
 		}
 	} 
 	
-	public static class reduceLists implements Function2<List<Integer>, List<Integer>, List<Integer>> { // UG means uniform gridding
+	public class reduceLists implements Function2<List<Integer>, List<Integer>, List<Integer>> { // UG means uniform gridding
 
 		public List<Integer> call(List<Integer> l1, List<Integer> l2) {
 			List<Integer> ls = new ArrayList<Integer>(l1);
